@@ -21,14 +21,14 @@ def generate_separable_data(n_anchors, n_samples, dimension, seed=1, kernel=None
     # Generate nonnegative anchor vectors in the original space
     anchors_orig = np.random.rand(dimension, n_anchors)
     
-    if kernel is None:
-        A = anchors_orig
-    else:
+    #if kernel is None:
+    #    A = anchors_orig
+    #else:
         # Compute the explicit mapping for each anchor to get the anchor matrix in the feature space.
         # ToDO: ensure this is the correct approach
-        A = np.zeros((kernel.intrinsic_dimension, n_anchors))  # ToDo: code intrinsic dimension from kernel
-        for i in range(n_anchors):
-            A[:, i] = kernel.project(anchors_orig[:, i])
+        #A = np.zeros((kernel.intrinsic_dimension, n_anchors))  # ToDo: code intrinsic dimension from kernel
+        #for i in range(n_anchors):
+        #    A[:, i] = kernel.project(anchors_orig[:, i])
 
     # Generate H with desired sparsity
     H = (np.random.rand(n_anchors, n_samples) < (1 - sparsity_on_H)) * np.random.rand(n_anchors, n_samples)
@@ -41,4 +41,9 @@ def generate_separable_data(n_anchors, n_samples, dimension, seed=1, kernel=None
     M_simulated = anchors_orig @ H
     #M_simulated = np.maximum(M_simulated, 0)  # ensure nonnegativity # ToDo: RaiseError
     
-    return M_simulated, anchors_orig, H
+    if kernel is None:
+        K = M_simulated.T @ M_simulated
+    else:
+        M_simulated = M_simulated / (np.linalg.norm(M_simulated, axis=0, keepdims=True) + 1e-10)
+        K = M_simulated.T @ M_simulated
+    return K
