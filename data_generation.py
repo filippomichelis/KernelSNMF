@@ -47,3 +47,56 @@ def generate_separable_data(n_anchors, n_samples, dimension, seed=1, kernel=None
         M_simulated = M_simulated / (np.linalg.norm(M_simulated, axis=0, keepdims=True) + 1e-10)
         K = M_simulated.T @ M_simulated
     return K
+
+
+def generate_separable_data_with_noise(n_anchors, n_samples, dimension, seed=1, kernel=None, sparsity_on_H=0.75, sigma=0):
+    """
+    Generate separable data in the RKHS using anchor vectors.
+    
+    Parameters:
+        n_anchors     : Number of anchor vectors.
+        n_observations: Number of data points (columns).
+        dimension     : Dimension of the original space.
+        seed          : Random seed for reproducibility.
+        kernel        : Kernel function to use (default: None).
+    Returns:
+        anchors_orig : Anchor vectors in the original space.
+        M_simulated  : Simulated data matrix in the RKHS.
+    """
+    np.random.seed(seed)
+    
+    # Generate nonnegative anchor vectors in the original space
+    anchors_orig = np.random.rand(dimension, n_anchors)
+    
+    #if kernel is None:
+    #    A = anchors_orig
+    #else:
+        # Compute the explicit mapping for each anchor to get the anchor matrix in the feature space.
+        # ToDO: ensure this is the correct approach
+        #A = np.zeros((kernel.intrinsic_dimension, n_anchors))  # ToDo: code intrinsic dimension from kernel
+        #for i in range(n_anchors):
+        #    A[:, i] = kernel.project(anchors_orig[:, i])
+
+    # Generate H with desired sparsity
+    H = (np.random.rand(n_anchors, n_samples) < (1 - sparsity_on_H)) * np.random.rand(n_anchors, n_samples)
+    H[:, :n_anchors] = np.eye(n_anchors)  # force first r columns to be pure anchor contributions
+
+    # Normalize columns of H (e.g. to sum to one)
+    H = H / (np.sum(H, axis=0, keepdims=True) + 1e-10)
+
+    # Form the simulated data matrix
+    M_simulated = anchors_orig @ H
+    #M_simulated = M_simulated / (np.sum(H, axis=0, keepdims=True) + 1e-10)
+    #M_simulated = np.maximum(M_simulated, 0)  # ensure nonnegativity # ToDo: RaiseError
+    
+    #perturbation with error
+    noise = np.random.normal(loc=0, scale=sigma, size=(dimension, n_samples))
+    M_simulated = M_simulated + noise
+    M_simulated = np.maximum(M_simulated , 0)
+
+    if kernel is None:
+        K = M_simulated.T @ M_simulated
+    else:
+        M_simulated = M_simulated / (np.linalg.norm(M_simulated, axis=0, keepdims=True) + 1e-10)
+        K = M_simulated.T @ M_simulated
+    return K
